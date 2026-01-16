@@ -65,8 +65,10 @@ void RegisterFlow()
     int.TryParse(Console.ReadLine(), out int year);
     Console.Write("Gênero: ");
     string genre = Console.ReadLine();
+    Console.Write("Duração (min): ");
+    int.TryParse(Console.ReadLine(), out int duration);
 
-    Album newAlbum = new Album(title, year, genre);
+    Album newAlbum = new Album(title, year, genre, duration);
     artist.AddAlbum(newAlbum);
 
     Console.WriteLine($"\nÁlbum '{title}' adicionado à discografia de {artist.Name}!");
@@ -87,7 +89,7 @@ void ListAll()
         {
             foreach (var album in artist.Albums)
             {
-                Console.WriteLine($"   💿 {album.Title} ({album.Year}) - [{album.Genre}] - Nota Média: {album.AverageScore:F1}");
+                Console.WriteLine($"   💿 {album.Title} ({album.Year}) - [{album.Genre}] - {album.DurationInMinutes} min - Nota Média: {album.AverageScore:F1}");
                 if (album.Reviews.Count > 0)
                 {
                     foreach(var review in album.Reviews)
@@ -173,17 +175,17 @@ void ShowStatistics()
 void SetupMockData()
 {
     Artist marina = new Artist("Marina Sena", "A diva do Pop Brasileiro");
-    Album vicio = new Album("Vício Inerente", 2023, "Pop");
+    Album vicio = new Album("Vício Inerente", 2023, "Pop", 45);
     vicio.AddReview(new Review("Brennda", 10, "Perfeito!"));
     vicio.AddReview(new Review("Crítico", 9, "Muito bom production."));
     
     marina.AddAlbum(vicio);
-    marina.AddAlbum(new Album("De Primeira", 2021, "Pop/MPB"));
+    marina.AddAlbum(new Album("De Primeira", 2021, "Pop/MPB", 40));
     
     artistList.Add(marina);
 
     Artist dua = new Artist("Dua Lipa", "British Pop Star");
-    dua.AddAlbum(new Album("Future Nostalgia", 2020, "Disco Pop"));
+    dua.AddAlbum(new Album("Future Nostalgia", 2020, "Disco Pop", 38));
     artistList.Add(dua);
 }
 

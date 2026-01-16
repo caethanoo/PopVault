@@ -19,11 +19,14 @@ public class Album
         }
     }
 
-    public Album(string title, int year, string genre)
+    public int DurationInMinutes { get; private set; }
+
+    public Album(string title, int year, string genre, int durationInMinutes)
     {
         Title = title;
         Year = year;
         Genre = genre;
+        DurationInMinutes = durationInMinutes;
     }
 
     public void AddReview(Review review)
