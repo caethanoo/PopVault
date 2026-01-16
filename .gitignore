@@ -1,0 +1,11 @@
+# .NET Build Folders
+bin/
+obj/
+
+# Editor Settings
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
