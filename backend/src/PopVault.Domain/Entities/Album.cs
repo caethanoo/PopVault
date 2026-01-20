@@ -5,6 +5,7 @@ namespace PopVault.Domain.Entities;
 
 public class Album
 {
+    public int Id { get; set; }
     public string Title { get; private set; }
     public int Year { get; private set; }
     public string Genre { get; private set; }

@@ -4,6 +4,7 @@ namespace PopVault.Domain.Entities;
 
 public class Artist
 {
+    public int Id { get; set; }
     public string Name { get; private set; }
     public string Bio { get; private set; }
     public List<Album> Albums { get; private set; } = new List<Album>();

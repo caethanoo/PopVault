@@ -9,3 +9,17 @@ obj/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Logs
+*.log
+
+# User specific
+*.user
+*.userosscache
+*.suo

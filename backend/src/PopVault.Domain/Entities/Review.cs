@@ -2,6 +2,7 @@ namespace PopVault.Domain.Entities;
 
 public class Review
 {
+    public int Id { get; set; }
     public string Author { get; private set; }
     public decimal Score { get; private set; }
     public string Comment { get; private set; }

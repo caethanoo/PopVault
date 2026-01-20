@@ -1,19 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using PopVault.Domain.Entities;
+using PopVault.Infrastructure;
 
+// --- PopVault: Week 4 Code (EF Core Database) ---
+// Focus: Persistence, DbContext, Transactions
 
-// State: Now we manage ARTISTS, not just Albums.
-List<Artist> artistList = new List<Artist>();
+// Setup Database Context
+using var context = new AppDbContext();
+// Ensure database is created (just in case)
+context.Database.EnsureCreated();
 
-// Mock Data
-SetupMockData();
+// Seed Data if empty
+SetupSeedData();
 
 while (true)
 {
     Console.Clear();
-    Console.WriteLine("=== PopVault: Seu Crítico Musical (Semana 2 - POO) ===");
+    Console.WriteLine("=== PopVault: Seu Crítico Musical (Semana 4 - Banco de Dados) ===");
     Console.WriteLine("1. Registrar Artista / Álbum");
     Console.WriteLine("2. Listar Discografia Completa");
     Console.WriteLine("3. Avaliar Álbum (Adicionar Review)");
@@ -43,8 +49,8 @@ void RegisterFlow()
     Console.Write("Nome do Artista: ");
     string artistName = Console.ReadLine();
 
-    // Find or Create Artist
-    Artist artist = artistList.FirstOrDefault(a => a.Name.Equals(artistName, StringComparison.OrdinalIgnoreCase));
+    // DB: Search Artist
+    Artist artist = context.Artists.FirstOrDefault(a => a.Name == artistName);
     
     if (artist == null)
     {
@@ -52,11 +58,12 @@ void RegisterFlow()
         Console.Write("Bio do Artista: ");
         string bio = Console.ReadLine();
         artist = new Artist(artistName, bio);
-        artistList.Add(artist);
+        context.Artists.Add(artist);
+        context.SaveChanges(); // Persist Artist immediately to get ID
     }
     else
     {
-        Console.WriteLine($"Artista '{artist.Name}' selecionado.");
+        Console.WriteLine($"Artista '{artist.Name}' selecionado (ID: {artist.Id}).");
     }
 
     Console.Write("Título do Álbum: ");
@@ -71,14 +78,23 @@ void RegisterFlow()
     Album newAlbum = new Album(title, year, genre, duration);
     artist.AddAlbum(newAlbum);
 
-    Console.WriteLine($"\nÁlbum '{title}' adicionado à discografia de {artist.Name}!");
+    context.SaveChanges(); // Persist Album (Cascade insert works because we added to tracked Entity)
+
+    Console.WriteLine($"\nÁlbum '{title}' salvo no Banco de Dados!");
     Pause();
 }
 
 void ListAll()
 {
-    Console.WriteLine("\n--- Discografia ---");
-    foreach (var artist in artistList)
+    Console.WriteLine("\n--- Discografia (Do Banco de Dados) ---");
+    
+    // DB: Eager Load Albums and Reviews
+    var allArtists = context.Artists
+        .Include(a => a.Albums)
+        .ThenInclude(al => al.Reviews)
+        .ToList();
+
+    foreach (var artist in allArtists)
     {
         Console.WriteLine($"\n🎤 {artist.Name} ({artist.Bio})");
         if (artist.Albums.Count == 0)
@@ -109,7 +125,10 @@ void AddReviewFlow()
     Console.Write("Nome do Artista: ");
     string artistName = Console.ReadLine();
 
-    Artist artist = artistList.FirstOrDefault(a => a.Name.Equals(artistName, StringComparison.OrdinalIgnoreCase));
+    var artist = context.Artists
+        .Include(a => a.Albums)
+        .FirstOrDefault(a => a.Name == artistName);
+
     if (artist == null)
     {
         Console.WriteLine("Artista não encontrado.");
@@ -120,7 +139,7 @@ void AddReviewFlow()
     Console.Write("Nome do Álbum: ");
     string albumTitle = Console.ReadLine();
     
-    Album album = artist.Albums.FirstOrDefault(a => a.Title.Equals(albumTitle, StringComparison.OrdinalIgnoreCase));
+    var album = artist.Albums.FirstOrDefault(a => a.Title.Equals(albumTitle, StringComparison.OrdinalIgnoreCase));
     if (album == null)
     {
         Console.WriteLine("Álbum não encontrado.");
@@ -138,6 +157,8 @@ void AddReviewFlow()
 
         Review review = new Review(author, score, comment);
         album.AddReview(review);
+        context.SaveChanges(); // Persist Review
+
         Console.WriteLine("Avaliação registrada com sucesso!");
     }
     else
@@ -150,21 +171,19 @@ void AddReviewFlow()
 
 void ShowStatistics()
 {
-    // Flatten logic: Get all albums from all artists
-    var allAlbums = artistList.SelectMany(a => a.Albums).ToList();
-
-    if (allAlbums.Count == 0)
-    {
-        Console.WriteLine("Nenhum dado.");
-        Pause();
-        return;
-    }
-
-    Console.WriteLine($"Total de Artistas: {artistList.Count}");
-    Console.WriteLine($"Total de Álbuns: {allAlbums.Count}");
+    // DB: Count directly in database usually, but for complex average we can pull or map.
+    // For simplicity, we'll pull all albums (careful with large data in real apps).
     
-    // LINQ makes this easy now
-    var bestAlbum = allAlbums.OrderByDescending(a => a.AverageScore).FirstOrDefault();
+    var bestAlbum = context.Albums.Include(a => a.Reviews).ToList()
+        .OrderByDescending(a => a.AverageScore)
+        .FirstOrDefault();
+
+    int artistCount = context.Artists.Count();
+    int albumCount = context.Albums.Count();
+
+    Console.WriteLine($"Total de Artistas: {artistCount}");
+    Console.WriteLine($"Total de Álbuns: {albumCount}");
+    
     if (bestAlbum != null)
     {
         Console.WriteLine($"\n🏆 Melhor Álbum: {bestAlbum.Title} ({bestAlbum.AverageScore:F1})");
@@ -172,21 +191,29 @@ void ShowStatistics()
     Pause();
 }
 
-void SetupMockData()
+void SetupSeedData()
 {
-    Artist marina = new Artist("Marina Sena", "A diva do Pop Brasileiro");
-    Album vicio = new Album("Vício Inerente", 2023, "Pop", 45);
-    vicio.AddReview(new Review("Brennda", 10, "Perfeito!"));
-    vicio.AddReview(new Review("Crítico", 9, "Muito bom production."));
-    
-    marina.AddAlbum(vicio);
-    marina.AddAlbum(new Album("De Primeira", 2021, "Pop/MPB", 40));
-    
-    artistList.Add(marina);
+    if (!context.Artists.Any())
+    {
+        Console.WriteLine("Banco vazio. Populando dados iniciais...");
 
-    Artist dua = new Artist("Dua Lipa", "British Pop Star");
-    dua.AddAlbum(new Album("Future Nostalgia", 2020, "Disco Pop", 38));
-    artistList.Add(dua);
+        Artist marina = new Artist("Marina Sena", "A diva do Pop Brasileiro");
+        Album vicio = new Album("Vício Inerente", 2023, "Pop", 45);
+        vicio.AddReview(new Review("Brennda", 10, "Perfeito!"));
+        vicio.AddReview(new Review("Crítico", 9, "Muito bom production."));
+        
+        marina.AddAlbum(vicio);
+        marina.AddAlbum(new Album("De Primeira", 2021, "Pop/MPB", 40));
+        
+        context.Artists.Add(marina);
+
+        Artist dua = new Artist("Dua Lipa", "British Pop Star");
+        dua.AddAlbum(new Album("Future Nostalgia", 2020, "Disco Pop", 38));
+        context.Artists.Add(dua);
+
+        context.SaveChanges();
+        Console.WriteLine("Dados inseridos!");
+    }
 }
 
 void Pause()
